@@ -22,7 +22,7 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
     let highlightRules: [HighlightRule]
     
     var isEditable: Bool = true
-    
+    var scrollViewSetting : (inout NSScrollView) -> Void = { _ in }
     var onEditingChanged: () -> Void       = {}
     var onCommit        : () -> Void       = {}
     var onTextChange    : (String) -> Void = { _ in }
@@ -41,13 +41,15 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
         highlightRules: [HighlightRule],
         onEditingChanged: @escaping () -> Void = {},
         onCommit: @escaping () -> Void = {},
-        onTextChange: @escaping (String) -> Void = { _ in }
+        onTextChange: @escaping (String) -> Void = { _ in },
+        scrollViewSetting : @escaping (inout NSScrollView) -> Void = {_ in }
     ) {
         _text = text
         self.highlightRules = highlightRules
         self.onEditingChanged = onEditingChanged
         self.onCommit = onCommit
         self.onTextChange = onTextChange
+        self.scrollViewSetting = scrollViewSetting
     }
     
     public func makeCoordinator() -> Coordinator {
@@ -58,7 +60,8 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
         let textView = CustomTextView(
             text: text,
             isEditable: isEditable,
-            font: font
+            font: font,
+            scrollViewSetting: scrollViewSetting
         )
         textView.delegate = context.coordinator
         updateTextViewModifiers(textView, isFirstRender: true)
@@ -155,6 +158,7 @@ extension HighlightedTextEditor {
 public final class CustomTextView: NSView {
     private var isEditable: Bool
     private var font: NSFont?
+    private var scrollViewSetting : (inout NSScrollView) -> Void
     
     weak var delegate: NSTextViewDelegate?
     
@@ -206,14 +210,14 @@ public final class CustomTextView: NSView {
     }
     
     private lazy var scrollView: NSScrollView = {
-        let scrollView = NSScrollView()
+        var scrollView = NSScrollView()
         scrollView.drawsBackground = true
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalRuler = false
         scrollView.autoresizingMask = [.width, .height]
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        
+        scrollViewSetting(&scrollView)
         return scrollView
     }()
     
@@ -253,12 +257,12 @@ public final class CustomTextView: NSView {
     }()
     
     // MARK: - Init
-    init(text: String, isEditable: Bool, font: NSFont?) {
+    init(text: String, isEditable: Bool, font: NSFont?, scrollViewSetting : @escaping (inout NSScrollView) -> Void) {
         self.font       = font
         self.isEditable = isEditable
         self.text       = text
         self.attributedText = NSMutableAttributedString()
-        
+        self.scrollViewSetting = scrollViewSetting
         super.init(frame: .zero)
     }
     
