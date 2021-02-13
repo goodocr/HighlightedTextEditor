@@ -19,6 +19,8 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
             self.onTextChange(text)
         }
     }
+    @Binding var outHighlightedText : NSAttributedString?
+    
     let highlightRules: [HighlightRule]
     
     var isEditable: Bool = true
@@ -38,11 +40,12 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
     
     public init(
         text: Binding<String>,
-        highlightRules: [HighlightRule],
+        highlightRules: [HighlightRule] = [],
         onEditingChanged: @escaping () -> Void = {},
         onCommit: @escaping () -> Void = {},
         onTextChange: @escaping (String) -> Void = { _ in },
-        scrollViewSetting : @escaping (inout NSScrollView) -> Void = {_ in }
+        scrollViewSetting : @escaping (inout NSScrollView) -> Void = {_ in },
+        outHighlightedText : Binding<NSAttributedString?> = .constant(nil)
     ) {
         _text = text
         self.highlightRules = highlightRules
@@ -50,6 +53,7 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
         self.onCommit = onCommit
         self.onTextChange = onTextChange
         self.scrollViewSetting = scrollViewSetting
+        _outHighlightedText = outHighlightedText
     }
     
     public func makeCoordinator() -> Coordinator {
@@ -73,12 +77,17 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
         context.coordinator.updatingNSView = true
         view.text = text
         
-        let highlightedText = HighlightedTextEditor.getHighlightedText(
-            text: text,
-            highlightRules: highlightRules,
-            font: font,
-            color: color
-        )
+        var highlightedText : NSAttributedString
+        if let outHighlightedText = self.outHighlightedText {
+            highlightedText = outHighlightedText
+        } else {
+            highlightedText  = HighlightedTextEditor.getHighlightedText(
+                text: text,
+                highlightRules: highlightRules,
+                font: font,
+                color: color
+            )
+        }
         updateTextViewModifiers(view, isFirstRender: false)
         
         view.attributedText = highlightedText
